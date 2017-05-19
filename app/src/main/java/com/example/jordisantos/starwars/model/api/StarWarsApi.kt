@@ -1,5 +1,6 @@
 package com.example.jordisantos.starwars.model.api
 
+import android.net.Uri
 import com.example.jordisantos.starwars.model.Character
 import com.example.jordisantos.starwars.model.Movie
 import com.google.gson.GsonBuilder
@@ -43,6 +44,21 @@ class StarWarsApi{
         return service.listMovies()
                 .flatMap { filmeResult -> Observable.from(filmeResult.results) }
                 .flatMap { film -> Observable.just(Movie(film.title, film.episodeId, ArrayList<Character>())) }
+    }
+
+    fun loadMoviesFull() : Observable<Movie>{
+        return service.listMovies()
+                .flatMap { filmeResult -> Observable.from(filmeResult.results) }
+                .flatMap { film ->
+                    Observable.zip(
+                            Observable.just(Movie(film.title, film.episodeId, ArrayList<Character>())),
+                            Observable.from(film.personUrls)
+                                    .flatMap {personUrl -> service.loadPerson(Uri.parse(personUrl).lastPathSegment) }
+                                    .flatMap { person ->
+                                        Observable.just(Character(person.name, person.gender))
+                                    }
+                                    .toList()
+                    )}
     }
 
 }
