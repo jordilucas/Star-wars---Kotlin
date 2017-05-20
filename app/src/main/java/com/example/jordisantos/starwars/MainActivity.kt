@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
         listView?.adapter = movieAdapter
 
         val api = StarWarsApi()
-        api.loadMovies()
+        api.loadMoviesFull()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe ({
