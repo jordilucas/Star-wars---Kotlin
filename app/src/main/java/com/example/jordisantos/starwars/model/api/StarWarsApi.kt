@@ -1,6 +1,7 @@
 package com.example.jordisantos.starwars.model.api
 
 import android.net.Uri
+import android.util.Log
 import com.example.jordisantos.starwars.model.Character
 import com.example.jordisantos.starwars.model.Movie
 import com.google.gson.GsonBuilder
@@ -18,6 +19,7 @@ import rx.Observable
 class StarWarsApi{
 
     val service : StarWarsApiDef
+    val peopleCache = mutableMapOf<String, Person>()
 
     init{
 
@@ -53,12 +55,30 @@ class StarWarsApi{
                     Observable.zip(
                             Observable.just(Movie(film.title, film.episodeId, ArrayList<Character>())),
                             Observable.from(film.personUrls)
-                                    .flatMap {personUrl -> service.loadPerson(Uri.parse(personUrl).lastPathSegment) }
+                                    .flatMap {personUrl ->
+                                        Observable.concat(getCache(personUrl),
+                                                service.loadPerson(Uri.parse(personUrl).lastPathSegment)
+                                                        .doOnNext{ person ->
+                                                            Log.d("API", "DOWNLOAD -> $personUrl")
+                                                            peopleCache.put(personUrl,  person)}
+                                                ).first()
+                                    }
                                     .flatMap { person ->
                                         Observable.just(Character(person.name, person.gender))
                                     }
-                                    .toList()
-                    )}
+                                    .toList(),
+                            { movie, characters ->
+                                movie.characters.addAll(characters)
+                                movie
+                            })}
+    }
+
+    private fun getCache(personUrl : String) : Observable<Person>{
+        return Observable.from(peopleCache.keys)
+                .filter { key -> key == personUrl}
+                .flatMap { key ->
+                    Log.d("API", "CACHE -> ${key}")
+                    Observable.just(peopleCache[personUrl ]) }
     }
 
 }
